@@ -45,7 +45,6 @@ for instruction in file:
 
     for i in range(magnitude):
         headCoordinates = move(headCoordinates, direction)
-        print(headCoordinates)
         if not isTouching(headCoordinates, tailCoordinates):
             hx, hy = headCoordinates[0], headCoordinates[1]
             tx, ty = tailCoordinates[0], tailCoordinates[1]
@@ -58,4 +57,34 @@ for instruction in file:
 
 print("total visited coordinates by tail: ", len(visited))
 
+# --- Part 2 --- #
+# We now have the same instructions, but instead for a rope with 10 knots rather than 2.
+rope = []
+for i in range(10):
+    rope.append([0,0])
+visited = set(tuple(rope[0]))
+
+for instruction in file:
+    instruction = instruction.strip('\n')
+
+    direction = instruction.split(' ')[0]
+    magnitude = int(instruction.split(' ')[1])
+
+    for _ in range(magnitude):
+        rope[0] = move(rope[0], direction)
+        for i in range(1,10):
+            head = rope[i-1]
+            tail = rope[i]
+            if not isTouching(head, tail):
+                hx, hy = head[0], head[1]
+                tx, ty = tail[0], tail[1]
+
+                diff_x = 0 if hx == tx else (hx - tx) / abs(hx - tx) # We just want the direction not magnitude
+                diff_y = 0 if hy == ty else (hy - ty) / abs(hy - ty)
+
+                rope[i] = [tx+diff_x, ty+diff_y]
+                if i == 9:
+                    visited.add(tuple(rope[9]))
+
+print("total visited coordinates by tail for 10 knot rope: ", len(visited))
     
