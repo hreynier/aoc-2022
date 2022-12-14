@@ -54,8 +54,7 @@
 
 # How many units of sand come to rest before sand starts flowing into the abyss below?
 
-minX, maxX = 1000, 0 
-minY, maxY = 1000, 0 
+maxY = 0 
 
 scan = []
 with open("input.txt") as f:
@@ -64,79 +63,86 @@ with open("input.txt") as f:
             line = []
             for p in x.replace('->','').split():
                 p = p.split(',')
-                minX = min(minX, int(p[0])) 
-                maxX = max(maxX, int(p[0])) 
-                minY = min(minY, int(p[1])) 
                 maxY = max(maxY, int(p[1])) 
                 coord = [int(p[0]), int(p[1])]
                 line.append(coord)
             scan.append(line)
 
-print("bounds: ", (minX, maxX), (minY, maxY))
-map = [['.' for _ in range(minX-2, maxX+2)] for _ in range(0, maxY + 2)]
+# We can use a set so that we don't have to worry about the bounds of an array.
 
-for line in scan:
-    for i, coord in enumerate(line):
-        if i != (len(line) - 1):
-            nextCoord = line[i + 1]
-            normalisedCol = coord[0] - minX + 2
-            normalisedRow = coord[1]
-            for col in range(coord[0], nextCoord[0]):
-                col = col - minX + 2
-                # print((normalisedRow, col))
-                map[normalisedRow][col] = '#'
-            for row in range(coord[1], nextCoord[1]):
-                # print((row, normalisedCol))
-                map[row][normalisedCol] = '#'
-# print(map)
-sandStart = 500 - minX + 2
-map[0][sandStart] = '+'
-pretty = ''
-for row in map:
-    line = ''.join(row)
-    print(line)
-    pretty.join(line + '\n')
+def add_to_set(prevCoord, coord, filled):
+    x, y = prevCoord[0], prevCoord[1]
+    dX, dY = coord[0], coord[1]
 
-print(pretty)
+    for col in range(min(x, dX), max(x, dX) + 1):
+        filled.add((y, col))
+    for row in range(min(y, dY), max(y, dY) + 1):
+        filled.add((row, x))
 
-resting = 0
+def set_stone_structures(scanArray):
+    filled = set()
+    for line in scanArray:
+        for i in range(1,len(line)):
+            coord = line[i]
+            prevCoord = line[i - 1]
+            add_to_set(prevCoord, coord, filled)
+    return filled
 
-def move_sand(coordinate):
-    global resting
-    row = coordinate[0]
-    col = coordinate[1]
+def sim_sand(filled, maxY, sandStart):
+    col, row = sandStart
 
-    if (row == len(map) - 1 or
-        (map[row-1][col] != '.' and col == 0) or
-        (map[row-1][col] != '.' and map[row-1][col-1] != '.' and col == len(map[0]) - 1)):
-        map[row][col] = '~'
-        move_sand([0, sandStart])
-    
-    if map[row - 1][col] == '~':
-        map[row][col] = '~'
-        move_sand([0, sandStart])
-    elif map[row - 1][col] == '.':
-        map[row-1][col] = 'o'
-        map[row][col] = '.'
-        move_sand([row-1, col])
-    elif map[row-1][col-1] == '~':
-        map[row][col] = '~'
-        if map[row-1][col+1] == '~':
-            return resting
-        move_sand([0, sandStart])
-    elif map[row-1][col-1] == '.':
-        map[row-1][col-1] = 'o'
-        map[row][col] = '.'
-        move_sand([row-1, col-1])
-    elif map[row-1][col+1] == '.':
-        map[row-1][col+1] = 'o'
-        map[row][col] = '.'
-        move_sand([row-1, col+1])
-    else:
-        resting += 1
-        move_sand([0, sandStart])
+    while row <= maxY:
+        # Break when we reach the source sand.
+        if(row, col) in filled:
+            return False
 
-restingNum = move_sand([0, sandStart])
+        if (row + 1, col) not in filled:
+            row += 1
+            continue
+        if (row + 1, col - 1) not in filled:
+            col -= 1
+            row += 1
+            continue
+        if (row + 1, col + 1) not in filled:
+            col += 1
+            row +=1
+            continue
+        
+        # Grain is at rest
+        filled.add((row, col))
+        return True
+    return False
 
-print(restingNum)
+# Set the stone structures into our set
+filled = set_stone_structures(scan)
+sandStart = (500, 0)
+ans = 0
+while True:
+    sim = sim_sand(filled, maxY, sandStart)
+    if not sim:
+        break
+    ans += 1
+print("P1, Number of sands at rest after reaching stable state: ", ans)
 
+# --- Part 2 --- #
+# You now know that there is a floor beneath the stone structure, two levels beneath the lowest stone structure.
+# Assuming the floor is infinetly long horizontally, how many sand grains will come to rest given that the flow stops
+# once the sand reaches the top of the source at (0,500)?
+
+# We can reuse our filled array, but instead pass a larger maxY to our simulation.
+# We also have to add a break condition, when we reach the top of the sand source, at (0,500).
+
+def set_stone_structure_with_floor(scan, floorLevel):
+    filled = set_stone_structures(scan)
+    for x in range(0,1000):
+        filled.add((floorLevel, x))
+    return filled
+
+filled2 = set_stone_structure_with_floor(scan, maxY + 2)
+ans = 0
+while True:
+    sim = sim_sand(filled2, maxY + 2, sandStart)
+    if not sim:
+        break
+    ans += 1
+print("P2, Number of sands at rest after reaching stable state: ", ans)
